@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_SRC="$REPO_ROOT/config/nvim"
+CONFIG_DST="${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
+
+log() { printf "\033[1;34m[INFO]\033[0m %s\n" "$*"; }
+warn() { printf "\033[1;33m[WARN]\033[0m %s\n" "$*"; }
+err() { printf "\033[1;31m[ERR ]\033[0m %s\n" "$*"; }
+
+ensure_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    err "Required command not found: $cmd"
+    return 1
+  fi
+}
+
+safe_symlink_config() {
+  mkdir -p "$(dirname "$CONFIG_DST")"
+
+  if [ -L "$CONFIG_DST" ]; then
+    local current
+    current="$(readlink "$CONFIG_DST" || true)"
+    if [ "$current" = "$CONFIG_SRC" ]; then
+      log "Config symlink already points to $CONFIG_SRC"
+      return 0
+    fi
+    warn "Replacing existing symlink at $CONFIG_DST -> $current"
+    rm -f "$CONFIG_DST"
+  elif [ -e "$CONFIG_DST" ]; then
+    local backup="$CONFIG_DST.backup.$(date +%Y%m%d-%H%M%S)"
+    warn "Existing config found at $CONFIG_DST; moving to $backup"
+    mv "$CONFIG_DST" "$backup"
+  fi
+
+  ln -s "$CONFIG_SRC" "$CONFIG_DST"
+  log "Linked $CONFIG_DST -> $CONFIG_SRC"
+}
+
+install_lsp_servers() {
+  if command -v go >/dev/null 2>&1; then
+    if ! command -v gopls >/dev/null 2>&1; then
+      log "Installing gopls via go install"
+      GO111MODULE=on go install golang.org/x/tools/gopls@latest || warn "Failed to install gopls"
+    else
+      log "gopls already installed"
+    fi
+  else
+    warn "Go not found; skipping gopls install"
+  fi
+
+  if command -v npm >/dev/null 2>&1; then
+    if ! command -v typescript-language-server >/dev/null 2>&1; then
+      log "Installing TypeScript language server via npm"
+      npm install -g typescript typescript-language-server || warn "Failed to install typescript-language-server"
+    else
+      log "typescript-language-server already installed"
+    fi
+  else
+    warn "npm not found; skipping TypeScript language server install"
+  fi
+
+  if ! command -v lua-language-server >/dev/null 2>&1; then
+    warn "lua-language-server not found. Install via package manager or Mason (:Mason)"
+  else
+    log "lua-language-server already installed"
+  fi
+}
+
+post_install_nvim_sync() {
+  if command -v nvim >/dev/null 2>&1; then
+    log "Running lazy.nvim sync (idempotent)"
+    nvim --headless '+Lazy! sync' +qa || warn "Neovim plugin sync returned non-zero status"
+  else
+    warn "nvim not found; skipping plugin sync"
+  fi
+}
