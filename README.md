@@ -26,6 +26,27 @@ This will:
 3. Preserve existing config by moving it to a timestamped backup
 4. Run plugin sync (`Lazy! sync`)
 
+
+## One-Command Remote Bootstrap (brand-new machine)
+
+You can bootstrap directly from GitHub without manually cloning first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dgriffin831/nvim-config/main/bootstrap-remote.sh | bash
+```
+
+Optional environment overrides:
+
+- `NVIM_CONFIG_REPO_URL` (default: `https://github.com/dgriffin831/nvim-config.git`)
+- `NVIM_CONFIG_DIR` (default: `$HOME/.local/src/nvim-config`)
+- `NVIM_CONFIG_BRANCH` (default: `main`)
+
+The script is idempotent:
+
+- Clones on first run
+- Pulls latest changes on re-run
+- Then executes `scripts/bootstrap.sh`
+
 ## Platform Notes
 
 ### Ubuntu/Debian
