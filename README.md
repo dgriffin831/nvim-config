@@ -26,7 +26,6 @@ This will:
 3. Preserve existing config by moving it to a timestamped backup
 4. Run plugin sync (`Lazy! sync`)
 
-
 ## One-Command Remote Bootstrap (brand-new machine)
 
 You can bootstrap directly from GitHub without manually cloning first:
@@ -46,6 +45,28 @@ The script is idempotent:
 - Clones on first run
 - Pulls latest changes on re-run
 - Then executes `scripts/bootstrap.sh`
+
+## Preview Mode (`--dry-run`)
+
+Use dry-run to preview package installs, clone/update steps, backup/symlink actions,
+and plugin sync commands before making changes.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dgriffin831/nvim-config/main/bootstrap-remote.sh | bash -s -- --dry-run
+```
+
+```bash
+./scripts/bootstrap.sh --dry-run
+```
+
+You can also dry-run individual scripts:
+
+```bash
+./scripts/install-ubuntu.sh --dry-run
+./scripts/install-macos.sh --dry-run
+./scripts/link-config.sh --dry-run
+./scripts/update.sh --dry-run
+```
 
 ## Platform Notes
 

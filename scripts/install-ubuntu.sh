@@ -1,7 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+DRY_RUN=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -h|--help)
+      cat <<USAGE
+Usage: scripts/install-ubuntu.sh [--dry-run]
+USAGE
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      exit 1
+      ;;
+  esac
+done
+
 source "$SCRIPT_DIR/common.sh"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  log "Dry-run mode enabled. No changes will be made."
+fi
 
 if ! command -v apt-get >/dev/null 2>&1; then
   err "apt-get not found. This script is for Ubuntu/Debian systems."
@@ -9,9 +34,8 @@ if ! command -v apt-get >/dev/null 2>&1; then
 fi
 
 log "Updating apt package index"
-sudo apt-get update -y
+run_sudo_cmd apt-get update -y
 
-# Base dependencies for this Neovim setup
 PKGS=(
   neovim
   git
@@ -31,22 +55,26 @@ for p in "${PKGS[@]}"; do
     log "Package already installed: $p"
   else
     log "Installing package: $p"
-    sudo apt-get install -y "$p"
+    run_sudo_cmd apt-get install -y "$p"
   fi
 done
 
-# Ensure fd command exists (Ubuntu package provides fdfind)
 if ! command -v fd >/dev/null 2>&1 && command -v fdfind >/dev/null 2>&1; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
-  log "Linked fdfind -> ~/.local/bin/fd"
+  mkdir_target="$HOME/.local/bin"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "[dry-run] mkdir -p $mkdir_target"
+    log "[dry-run] ln -sf $(command -v fdfind) $HOME/.local/bin/fd"
+  else
+    mkdir -p "$mkdir_target"
+    ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+    log "Linked fdfind -> ~/.local/bin/fd"
+  fi
 fi
 
-# Optional LSP package (if available on distro)
 if ! command -v lua-language-server >/dev/null 2>&1; then
   if apt-cache show lua-language-server >/dev/null 2>&1; then
     log "Installing lua-language-server"
-    sudo apt-get install -y lua-language-server || true
+    run_sudo_cmd apt-get install -y lua-language-server || true
   fi
 fi
 
